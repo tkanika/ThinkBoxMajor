@@ -1,6 +1,10 @@
 import { v2 as cloudinary } from 'cloudinary';
 import multer from 'multer';
 import path from 'path';
+import dotenv from 'dotenv';
+
+// Ensure dotenv is loaded
+dotenv.config();
 
 // Configure Cloudinary
 cloudinary.config({
@@ -15,7 +19,7 @@ const storage = multer.memoryStorage();
 const upload = multer({ 
   storage: storage,
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
+    fileSize: 50 * 1024 * 1024, // 50MB limit for large PDFs
   },
   fileFilter: (req, file, cb) => {
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];

@@ -1,6 +1,6 @@
+import dotenv from 'dotenv';
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import connectDB from './config/db.js';
 import userRoutes from './routes/userRoutes.js';
 import noteRoutes from './routes/noteRoutes.js';
@@ -22,8 +22,8 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Database connection
 connectDB();
@@ -42,6 +42,27 @@ app.get('/', (req, res) => {
 // Test CORS
 app.get('/api/test', (req, res) => {
   res.json({ message: 'CORS is working!', timestamp: new Date() });
+});
+
+// Error handling middleware for multer and file uploads
+app.use((error, req, res, next) => {
+  if (error) {
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({ message: 'File size too large. Maximum size is 50MB.' });
+    }
+    if (error.code === 'LIMIT_FILE_COUNT') {
+      return res.status(400).json({ message: 'Too many files uploaded.' });
+    }
+    if (error.code === 'LIMIT_UNEXPECTED_FILE') {
+      return res.status(400).json({ message: 'Unexpected file field.' });
+    }
+    if (error.message === 'Invalid file type') {
+      return res.status(400).json({ message: 'Invalid file type. Only images and PDFs are allowed.' });
+    }
+    console.error('Upload error:', error);
+    return res.status(500).json({ message: 'File upload error.' });
+  }
+  next();
 });
 
 app.listen(PORT, () => {

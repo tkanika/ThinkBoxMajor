@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import api from '../utils/api';
+import api, { uploadFile } from '../utils/api';
 import ReactMarkdown from 'react-markdown';
 import { 
   Save, 
@@ -39,6 +39,7 @@ const NoteEditor = () => {
   const [tagInput, setTagInput] = useState('');
   const [aiInsight, setAiInsight] = useState('');
   const [loadingInsight, setLoadingInsight] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   useEffect(() => {
     if (isEditing) {
@@ -103,6 +104,7 @@ const NoteEditor = () => {
 
     try {
       setSaving(true);
+      setUploadProgress(0);
       const formData = new FormData();
       
       // Add all note fields
@@ -120,22 +122,44 @@ const NoteEditor = () => {
       }
 
       let response;
-      if (isEditing) {
-        response = await api.put(`/api/notes/${id}`, formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
+      const endpoint = isEditing ? `/api/notes/${id}` : '/api/notes';
+      
+      // Use the uploadFile function for better timeout handling and progress tracking
+      if (file) {
+        // Use the specialized upload function for file uploads
+        response = await uploadFile(endpoint, formData, {
+          method: isEditing ? 'PUT' : 'POST',
+          onProgress: (progressEvent) => {
+            const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setUploadProgress(progress);
+          }
         });
       } else {
-        response = await api.post('/api/notes', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
+        // Use regular API for text-only updates
+        if (isEditing) {
+          response = await api.put(endpoint, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
+        } else {
+          response = await api.post(endpoint, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
+        }
       }
 
       navigate(`/notes/${response.data.note._id}`);
     } catch (error) {
       console.error('Error saving note:', error);
-      alert('Error saving note. Please try again.');
+      if (error.code === 'ECONNABORTED') {
+        alert('Upload timeout. Please try again with a smaller file or check your internet connection.');
+      } else if (error.response?.status === 413) {
+        alert('File is too large. Please try a smaller file.');
+      } else {
+        alert('Error saving note. Please try again.');
+      }
     } finally {
       setSaving(false);
+      setUploadProgress(0);
     }
   };
 
@@ -200,10 +224,22 @@ const NoteEditor = () => {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+                className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2 relative"
               >
                 <Save className="w-4 h-4" />
-                <span>{saving ? 'Saving...' : 'Save'}</span>
+                <span>
+                  {saving 
+                    ? (file && uploadProgress > 0 
+                        ? `Uploading... ${uploadProgress}%` 
+                        : 'Saving...')
+                    : 'Save'
+                  }
+                </span>
+                {saving && file && uploadProgress > 0 && (
+                  <div className="absolute bottom-0 left-0 h-1 bg-indigo-400 rounded-b transition-all duration-300"
+                       style={{ width: `${uploadProgress}%` }}>
+                  </div>
+                )}
               </button>
             </div>
           </div>

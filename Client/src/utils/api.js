@@ -36,4 +36,52 @@ api.interceptors.response.use(
   }
 );
 
+// Create a separate instance for file uploads with extended timeout
+export const createFileUploadRequest = (config = {}) => {
+  return axios.create({
+    baseURL: 'http://localhost:8000',
+    timeout: 120000, // 2 minutes for file uploads
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+    ...config
+  });
+};
+
+// Helper function for file uploads
+export const uploadFile = async (url, formData, options = {}) => {
+  const uploadApi = createFileUploadRequest();
+  
+  // Add auth token
+  const token = localStorage.getItem('token');
+  if (token) {
+    uploadApi.defaults.headers.Authorization = `Bearer ${token}`;
+  }
+
+  // Extract method from options, default to POST
+  const { method = 'POST', onProgress, ...restOptions } = options;
+
+  // Add progress callback if provided
+  const config = {
+    onUploadProgress: onProgress,
+    ...restOptions
+  };
+
+  try {
+    let response;
+    if (method.toUpperCase() === 'PUT') {
+      response = await uploadApi.put(url, formData, config);
+    } else {
+      response = await uploadApi.post(url, formData, config);
+    }
+    return response;
+  } catch (error) {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/auth';
+    }
+    throw error;
+  }
+};
+
 export default api;

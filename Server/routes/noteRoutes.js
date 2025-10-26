@@ -90,7 +90,13 @@ router.post('/', auth, upload.single('file'), async (req, res) => {
         }
       } catch (uploadError) {
         console.error('File upload error:', uploadError);
-        return res.status(500).json({ message: 'File upload failed' });
+        if (uploadError.message && uploadError.message.includes('File size too large')) {
+          return res.status(413).json({ message: 'File size too large. Maximum size is 50MB.' });
+        }
+        if (uploadError.message && uploadError.message.includes('timeout')) {
+          return res.status(408).json({ message: 'Upload timeout. Please try again.' });
+        }
+        return res.status(500).json({ message: 'File upload failed. Please try again.' });
       }
     }
 
@@ -149,7 +155,13 @@ router.put('/:id', auth, upload.single('file'), async (req, res) => {
         }
       } catch (uploadError) {
         console.error('File upload error:', uploadError);
-        return res.status(500).json({ message: 'File upload failed' });
+        if (uploadError.message && uploadError.message.includes('File size too large')) {
+          return res.status(413).json({ message: 'File size too large. Maximum size is 50MB.' });
+        }
+        if (uploadError.message && uploadError.message.includes('timeout')) {
+          return res.status(408).json({ message: 'Upload timeout. Please try again.' });
+        }
+        return res.status(500).json({ message: 'File upload failed. Please try again.' });
       }
     }
 
