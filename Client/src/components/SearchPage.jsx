@@ -14,6 +14,34 @@ import {
 } from 'lucide-react';
 
 const SearchPage = () => {
+    // Helper to get file extension
+    const getFileExtension = (fileUrl) => {
+      if (!fileUrl) return '';
+      const parts = fileUrl.split('.');
+      return parts.length > 1 ? parts.pop().toLowerCase() : '';
+    };
+
+    // Helper to get file type label
+    const getFileTypeLabel = (note) => {
+      if (note.type === 'pdf') return 'PDF';
+      if (note.type === 'image') return 'Image';
+      if (note.type === 'url') return 'URL';
+      const ext = getFileExtension(note.fileUrl);
+      if (ext === 'docx' || ext === 'doc') return 'Word';
+      if (ext === 'txt') return 'Text';
+      return 'Document';
+    };
+
+    // Helper to get file type icon
+    const getFileTypeIcon = (note) => {
+      if (note.type === 'pdf') return <FileDown className="w-4 h-4 text-red-600" />;
+      if (note.type === 'image') return <Image className="w-4 h-4 text-green-600" />;
+      if (note.type === 'url') return <Link className="w-4 h-4 text-blue-600" />;
+      const ext = getFileExtension(note.fileUrl);
+      if (ext === 'docx' || ext === 'doc') return <FileText className="w-4 h-4 text-indigo-600" />;
+      if (ext === 'txt') return <FileText className="w-4 h-4 text-gray-600" />;
+      return <FileText className="w-4 h-4 text-gray-600" />;
+    };
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const query = searchParams.get('q') || '';
@@ -55,22 +83,14 @@ const SearchPage = () => {
     }
   };
 
-  const getTypeIcon = (type) => {
-    switch (type) {
-      case 'image': return <Image className="w-4 h-4" />;
-      case 'pdf': return <FileDown className="w-4 h-4" />;
-      case 'url': return <Link className="w-4 h-4" />;
-      default: return <FileText className="w-4 h-4" />;
-    }
-  };
-
-  const getTypeColor = (type) => {
-    switch (type) {
-      case 'image': return 'bg-green-100 text-green-800';
-      case 'pdf': return 'bg-red-100 text-red-800';
-      case 'url': return 'bg-blue-100 text-blue-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
+  const getTypeColor = (note) => {
+    if (note.type === 'image') return 'bg-green-100 text-green-800';
+    if (note.type === 'pdf') return 'bg-red-100 text-red-800';
+    if (note.type === 'url') return 'bg-blue-100 text-blue-800';
+    const ext = getFileExtension(note.fileUrl);
+    if (ext === 'docx' || ext === 'doc') return 'bg-indigo-100 text-indigo-800';
+    if (ext === 'txt') return 'bg-gray-100 text-gray-800';
+    return 'bg-gray-100 text-gray-800';
   };
 
   return (
@@ -169,8 +189,8 @@ const SearchPage = () => {
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center space-x-3">
-                    <div className={`p-2 rounded ${getTypeColor(note.type)}`}>
-                      {getTypeIcon(note.type)}
+                    <div className={`p-2 rounded ${getTypeColor(note)}`}>
+                      {getFileTypeIcon(note)}
                     </div>
                     <div>
                       <h3 className="font-medium text-gray-900 group-hover:text-indigo-600 transition-colors">
@@ -181,8 +201,8 @@ const SearchPage = () => {
                           <Calendar className="w-3 h-3 mr-1" />
                           {new Date(note.createdAt).toLocaleDateString()}
                         </div>
-                        <span className={`px-2 py-1 rounded-full text-xs ${getTypeColor(note.type)}`}>
-                          {note.type}
+                        <span className={`px-2 py-1 rounded-full text-xs ${getTypeColor(note)}`}>
+                          {getFileTypeLabel(note)}
                         </span>
                       </div>
                     </div>

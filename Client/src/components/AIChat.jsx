@@ -8,13 +8,16 @@ const AIChat = () => {
     {
       id: 1,
       type: 'ai',
-      content: "Hi! I'm your AI assistant. I can help you find information from your notes and answer questions based on your knowledge base. What would you like to know?",
+      content: "Hi! I'm your AI assistant. I can help you find information from your notes and answer questions based on your knowledge base. You can select specific notes to chat with, or I'll search all your notes. What would you like to know?",
       timestamp: new Date(),
       sources: []
     }
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [notes, setNotes] = useState([]);
+  const [selectedNotes, setSelectedNotes] = useState([]);
+  const [showNoteSelector, setShowNoteSelector] = useState(false);
   const messagesEndRef = useRef(null);
   const navigate = useNavigate();
 
@@ -25,6 +28,31 @@ const AIChat = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    fetchNotes();
+  }, []);
+
+  const fetchNotes = async () => {
+    try {
+      const response = await api.get('/api/notes');
+      setNotes(response.data.notes);
+    } catch (error) {
+      console.error('Error fetching notes:', error);
+    }
+  };
+
+  const toggleNoteSelection = (noteId) => {
+    setSelectedNotes(prev => 
+      prev.includes(noteId) 
+        ? prev.filter(id => id !== noteId)
+        : [...prev, noteId]
+    );
+  };
+
+  const clearSelection = () => {
+    setSelectedNotes([]);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -45,7 +73,8 @@ const AIChat = () => {
     try {
       const response = await api.post('/api/ai/chat', {
         message: userMessage.content,
-        limit: 5
+        limit: 20,
+        noteIds: selectedNotes.length > 0 ? selectedNotes : undefined
       });
 
       const aiMessage = {
@@ -184,6 +213,54 @@ const AIChat = () => {
       {/* Input */}
       <div className="bg-white border-t border-gray-200 p-6">
         <div className="max-w-4xl mx-auto">
+          {/* Note Selector */}
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <button
+                onClick={() => setShowNoteSelector(!showNoteSelector)}
+                className="text-sm text-indigo-600 hover:text-indigo-700 font-medium flex items-center space-x-1"
+              >
+                <FileText className="w-4 h-4" />
+                <span>
+                  {selectedNotes.length > 0 
+                    ? `${selectedNotes.length} note(s) selected` 
+                    : 'Select specific notes (optional)'}
+                </span>
+              </button>
+              {selectedNotes.length > 0 && (
+                <button
+                  onClick={clearSelection}
+                  className="text-xs text-gray-500 hover:text-gray-700"
+                >
+                  Clear selection
+                </button>
+              )}
+            </div>
+            
+            {showNoteSelector && (
+              <div className="border border-gray-200 rounded-lg p-3 max-h-48 overflow-y-auto bg-gray-50">
+                <p className="text-xs text-gray-600 mb-2">Select notes to focus the AI's responses:</p>
+                <div className="space-y-1">
+                  {notes.map(note => (
+                    <label
+                      key={note._id}
+                      className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedNotes.includes(note._id)}
+                        onChange={() => toggleNoteSelection(note._id)}
+                        className="w-4 h-4 text-indigo-600 rounded"
+                      />
+                      <span className="text-sm text-gray-700 flex-1">{note.title}</span>
+                      <span className="text-xs text-gray-500">{note.type}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Quick Questions */}
           {messages.length === 1 && (
             <div className="mb-4">

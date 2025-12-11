@@ -15,6 +15,59 @@ import {
 } from 'lucide-react';
 
 const Dashboard = () => {
+    // Helper to get file extension
+    const getFileExtension = (fileUrl) => {
+      if (!fileUrl) return '';
+      const parts = fileUrl.split('.');
+      return parts.length > 1 ? parts.pop().toLowerCase() : '';
+    };
+
+  // Helper to get file type label
+  const getFileTypeLabel = (note) => {
+    // Check actual file extension first
+    const ext = getFileExtension(note.fileUrl);
+    if (ext === 'pdf') return 'PDF';
+    if (ext === 'docx' || ext === 'doc') return 'Word';
+    if (ext === 'txt') return 'Text';
+    if (ext === 'png' || ext === 'jpg' || ext === 'jpeg' || ext === 'gif' || ext === 'webp') return 'Image';
+    
+    // Fallback to note.type if no file extension
+    if (note.type === 'pdf') return 'PDF';
+    if (note.type === 'image') return 'Image';
+    if (note.type === 'url') return 'URL';
+    if (note.type === 'text') return 'Text';
+    return 'Document';
+  };  // Helper to get file type icon
+  const getFileTypeIcon = (note) => {
+    // Check actual file extension first
+    const ext = getFileExtension(note.fileUrl);
+    if (ext === 'pdf') return <FileDown className="w-5 h-5 text-red-600" />;
+    if (ext === 'docx' || ext === 'doc') return <FileText className="w-5 h-5 text-indigo-600" />;
+    if (ext === 'txt') return <FileText className="w-5 h-5 text-gray-600" />;
+    if (ext === 'png' || ext === 'jpg' || ext === 'jpeg' || ext === 'gif' || ext === 'webp') return <Image className="w-5 h-5 text-green-600" />;
+    
+    // Fallback to note.type if no file extension
+    if (note.type === 'pdf') return <FileDown className="w-5 h-5 text-red-600" />;
+    if (note.type === 'image') return <Image className="w-5 h-5 text-green-600" />;
+    if (note.type === 'url') return <Link className="w-5 h-5 text-blue-600" />;
+    return <FileText className="w-5 h-5 text-gray-600" />;
+  };
+
+  // Helper to get type color
+  const getTypeColor = (note) => {
+    // Check actual file extension first
+    const ext = getFileExtension(note.fileUrl);
+    if (ext === 'pdf') return 'bg-red-100 text-red-800';
+    if (ext === 'docx' || ext === 'doc') return 'bg-indigo-100 text-indigo-800';
+    if (ext === 'txt') return 'bg-gray-100 text-gray-800';
+    if (ext === 'png' || ext === 'jpg' || ext === 'jpeg' || ext === 'gif' || ext === 'webp') return 'bg-green-100 text-green-800';
+    
+    // Fallback to note.type if no file extension
+    if (note.type === 'pdf') return 'bg-red-100 text-red-800';
+    if (note.type === 'image') return 'bg-green-100 text-green-800';
+    if (note.type === 'url') return 'bg-blue-100 text-blue-800';
+    return 'bg-gray-100 text-gray-800';
+  };
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedType, setSelectedType] = useState('all');
@@ -44,21 +97,10 @@ const Dashboard = () => {
 
   const fetchTags = async () => {
     try {
-      const response = await api.get('/api/notes/tags/all');
+      const response = await api.get('/api/notes/tags');
       setTags(response.data.tags);
     } catch (error) {
       console.error('Error fetching tags:', error);
-    }
-  };
-
-  const handleDelete = async (noteId) => {
-    if (window.confirm('Are you sure you want to delete this note?')) {
-      try {
-        await api.delete(`/api/notes/${noteId}`);
-        setNotes(notes.filter(note => note._id !== noteId));
-      } catch (error) {
-        console.error('Error deleting note:', error);
-      }
     }
   };
 
@@ -75,21 +117,14 @@ const Dashboard = () => {
     }
   };
 
-  const getTypeIcon = (type) => {
-    switch (type) {
-      case 'image': return <Image className="w-5 h-5" />;
-      case 'pdf': return <FileDown className="w-5 h-5" />;
-      case 'url': return <Link className="w-5 h-5" />;
-      default: return <FileText className="w-5 h-5" />;
-    }
-  };
-
-  const getTypeColor = (type) => {
-    switch (type) {
-      case 'image': return 'bg-green-100 text-green-800';
-      case 'pdf': return 'bg-red-100 text-red-800';
-      case 'url': return 'bg-blue-100 text-blue-800';
-      default: return 'bg-gray-100 text-gray-800';
+  const handleDelete = async (noteId) => {
+    if (!window.confirm('Are you sure you want to delete this note?')) return;
+    
+    try {
+      await api.delete(`/api/notes/${noteId}`);
+      setNotes(notes.filter(note => note._id !== noteId));
+    } catch (error) {
+      console.error('Error deleting note:', error);
     }
   };
 
@@ -198,11 +233,11 @@ const Dashboard = () => {
                 {/* Header */}
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center space-x-2">
-                    <div className={`p-1.5 rounded ${getTypeColor(note.type)}`}>
-                      {getTypeIcon(note.type)}
+                    <div className={`p-1.5 rounded ${getTypeColor(note)}`}> 
+                      {getFileTypeIcon(note)}
                     </div>
-                    <span className={`text-xs px-2 py-1 rounded-full ${getTypeColor(note.type)}`}>
-                      {note.type}
+                    <span className={`text-xs px-2 py-1 rounded-full ${getTypeColor(note)}`}> 
+                      {getFileTypeLabel(note)}
                     </span>
                   </div>
                   <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -299,6 +334,6 @@ const Dashboard = () => {
       )}
     </div>
   );
-};
+}
 
 export default Dashboard;

@@ -90,7 +90,10 @@ const NoteEditor = () => {
       // Auto-detect type based on file
       if (selectedFile.type.startsWith('image/')) {
         setNote(prev => ({ ...prev, type: 'image' }));
-      } else if (selectedFile.type === 'application/pdf') {
+      } else if (selectedFile.type === 'application/pdf' || 
+                 selectedFile.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+                 selectedFile.type === 'application/msword' ||
+                 selectedFile.type === 'text/plain') {
         setNote(prev => ({ ...prev, type: 'pdf' }));
       }
     }
@@ -287,13 +290,13 @@ const NoteEditor = () => {
             {(note.type === 'image' || note.type === 'pdf') && (
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">
-                  Upload {note.type === 'image' ? 'Image' : 'PDF'}
+                  Upload {note.type === 'image' ? 'Image' : 'Document (PDF, DOCX, TXT)'}
                 </label>
                 <div className="flex items-center space-x-4">
                   <input
                     type="file"
                     onChange={handleFileChange}
-                    accept={note.type === 'image' ? 'image/*' : '.pdf'}
+                    accept={note.type === 'image' ? 'image/*' : '.pdf,.docx,.doc,.txt'}
                     className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
                   />
                 </div>

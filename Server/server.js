@@ -6,6 +6,8 @@ import userRoutes from './routes/userRoutes.js';
 import noteRoutes from './routes/noteRoutes.js';
 import searchRoutes from './routes/searchRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
+import cron from 'node-cron';
+import axios from 'axios';
 
 dotenv.config();
 
@@ -56,13 +58,29 @@ app.use((error, req, res, next) => {
     if (error.code === 'LIMIT_UNEXPECTED_FILE') {
       return res.status(400).json({ message: 'Unexpected file field.' });
     }
-    if (error.message === 'Invalid file type') {
-      return res.status(400).json({ message: 'Invalid file type. Only images and PDFs are allowed.' });
+    if (error.message && error.message.includes('Invalid file type')) {
+      return res.status(400).json({ message: 'Invalid file type. Allowed: images, PDF, DOCX, DOC, TXT files.' });
     }
     console.error('Upload error:', error);
     return res.status(500).json({ message: 'File upload error.' });
   }
   next();
+});
+
+// Ping deployment server every 10 minutes to prevent sleep
+cron.schedule('*/10 * * * *', async () => {
+  try {
+    // Use deployment URL from environment variable
+    const url = process.env.RENDER_EXTERNAL_URL;
+    if (!url) {
+      console.warn('[CRON] RENDER_EXTERNAL_URL is not set in environment variables.');
+      return;
+    }
+    await axios.get(url);
+    console.log(`[CRON] Pinged ${url} at ${new Date().toISOString()}`);
+  } catch (err) {
+    console.error('[CRON] Failed to ping deployment server:', err.message);
+  }
 });
 
 app.listen(PORT, () => {

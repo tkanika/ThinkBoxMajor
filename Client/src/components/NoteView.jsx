@@ -17,6 +17,34 @@ import {
 } from 'lucide-react';
 
 const NoteView = () => {
+    // Helper to get file extension
+    const getFileExtension = (fileUrl) => {
+      if (!fileUrl) return '';
+      const parts = fileUrl.split('.');
+      return parts.length > 1 ? parts.pop().toLowerCase() : '';
+    };
+
+    // Helper to get file type label
+    const getFileTypeLabel = (note) => {
+      if (note.type === 'pdf') return 'PDF Document';
+      if (note.type === 'image') return 'Image File';
+      if (note.type === 'url') return 'URL Link';
+      const ext = getFileExtension(note.fileUrl);
+      if (ext === 'docx' || ext === 'doc') return 'Word Document';
+      if (ext === 'txt') return 'Text File';
+      return 'Document File';
+    };
+
+    // Helper to get file type icon
+    const getFileTypeIcon = (note) => {
+      if (note.type === 'pdf') return <FileDown className="w-5 h-5 text-red-600" />;
+      if (note.type === 'image') return <ImageIcon className="w-5 h-5 text-green-600" />;
+      if (note.type === 'url') return <Link className="w-5 h-5 text-blue-600" />;
+      const ext = getFileExtension(note.fileUrl);
+      if (ext === 'docx' || ext === 'doc') return <FileText className="w-5 h-5 text-indigo-600" />;
+      if (ext === 'txt') return <FileText className="w-5 h-5 text-gray-600" />;
+      return <FileText className="w-5 h-5 text-gray-600" />;
+    };
   const { id } = useParams();
   const navigate = useNavigate();
   const [note, setNote] = useState(null);
@@ -47,6 +75,59 @@ const NoteView = () => {
       setNote(response.data.note);
     } catch (error) {
       console.error('Error updating favorite:', error);
+    }
+  };
+
+  const handleDownload = async () => {
+    try {
+      const ext = getFileExtension(note.fileUrl);
+      
+      // Handle PDF files - download from backend
+      if (ext === 'pdf') {
+        const response = await api.get(`/api/notes/${id}/download`, {
+          responseType: 'blob'
+        });
+        
+        // Create blob and download
+        const blob = new Blob([response.data], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${note.title}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }
+      // Handle TXT files - force download from Cloudinary
+      else if (ext === 'txt') {
+        const response = await fetch(note.fileUrl);
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${note.title}.txt`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }
+      // Handle Word files - direct download from Cloudinary
+      else if (ext === 'docx' || ext === 'doc') {
+        const link = document.createElement('a');
+        link.href = note.fileUrl;
+        link.download = `${note.title}.${ext}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+      // Handle other files
+      else {
+        window.open(note.fileUrl, '_blank');
+      }
+    } catch (error) {
+      console.error('Download error:', error);
+      alert('Failed to download file. Please try again.');
     }
   };
 
@@ -170,6 +251,7 @@ const NoteView = () => {
         )}
 
         {/* File/URL content */}
+        {/* File preview for images */}
         {note.type === 'image' && note.fileUrl && (
           <div className="mb-6">
             <img
@@ -180,22 +262,21 @@ const NoteView = () => {
           </div>
         )}
 
-        {note.type === 'pdf' && note.fileUrl && (
-          <div className="mb-6 p-4 bg-red-50 rounded-lg">
+        {/* File download/view for all document types */}
+        {note.fileUrl && (note.type === 'pdf' || note.type === 'image' || getFileExtension(note.fileUrl)) && (
+          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <FileDown className="w-5 h-5 text-red-600" />
-                <span className="font-medium text-red-800">PDF Document</span>
+                {getFileTypeIcon(note)}
+                <span className="font-medium text-gray-800">{getFileTypeLabel(note)}</span>
               </div>
-              <a
-                href={note.fileUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center space-x-2 bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 transition-colors"
+              <button
+                onClick={handleDownload}
+                className="flex items-center space-x-2 bg-indigo-600 text-white px-3 py-1 rounded text-sm hover:bg-indigo-700 transition-colors"
               >
                 <Download className="w-4 h-4" />
-                <span>View PDF</span>
-              </a>
+                <span>Download</span>
+              </button>
             </div>
           </div>
         )}
@@ -227,13 +308,18 @@ const NoteView = () => {
         )}
 
         {/* Main content */}
-        {note.content && (
+        {(note.content || note.extractedText) && (
           <div className="prose max-w-none">
-            <ReactMarkdown>{note.content}</ReactMarkdown>
+            {note.extractedText && note.type === 'pdf' && (
+              <div className="mb-4 p-3 bg-yellow-50 border-l-4 border-yellow-400 text-sm text-yellow-800">
+                <strong>📄 Extracted Text from Document:</strong>
+              </div>
+            )}
+            <ReactMarkdown>{note.content || note.extractedText}</ReactMarkdown>
           </div>
         )}
 
-        {!note.content && note.type === 'text' && (
+        {!note.content && !note.extractedText && note.type === 'text' && (
           <div className="text-center py-8 text-gray-500">
             <FileText className="w-12 h-12 mx-auto mb-2 opacity-50" />
             <p>This note doesn't have any content yet.</p>
